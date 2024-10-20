@@ -1,2 +1,2 @@
-# Ranking
+# Bacrama ranking
 Bacrama ranking implementation
