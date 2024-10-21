@@ -1,0 +1,16 @@
+Bacchiatori,Equal,Opposite,EqualPoints,OppositePoints
+H,H,A,4,10
+L,H,L,10,5
+S,S,H,4,10
+I,L,I,7,10
+C,A,I,10,2
+A,C,A,8,10
+,C,H,10,4
+,C,L,10,2
+,I,C,8,10
+,L,A,3,10
+,S,L,11,9
+,A,S,10,1
+,S,C,2,10
+,H,I,11,9
+,I,S,10,3
