@@ -1,8 +1,20 @@
 [package]
 name = "bacrama-ranking"
-version = "0.1.0"
-edition = "2021"
+version.workspace = true
+readme = "README.md"
+repository.workspace = true
+license.workspace = true
+edition.workspace = true
 publish = false
+
+[workspace]
+members = ["cli"]
+
+[workspace.package]
+version = "0.1.0"
+repository = "https://github.com/Uastamasta-ASD/Ranking"
+license = "Apache-2.0"
+edition = "2021"
 
 [dependencies]
 fxhash = "0.2.1"
