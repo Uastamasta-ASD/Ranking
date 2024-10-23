@@ -2,6 +2,8 @@
 
 use fxhash::FxHashMap;
 
+pub const STARTING_ELO: i32 = 1200;
+
 const K: f64 = 100.0;
 const K_PLACING: f64 = 200.0;
 const K_OPPOSING_PLACING: f64 = 50.0;
