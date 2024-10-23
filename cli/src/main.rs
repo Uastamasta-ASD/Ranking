@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 
 use crate::utils::{RegisteredBacchiatore, RegisteredDuel};
-use bacrama_ranking::{RankingBuilder, STARTING_ELO};
+use bacrama_ranking::{is_placing, RankingBuilder, STARTING_ELO};
 use clap::Parser;
 use fxhash::FxHashMap;
 use regex::Regex;
@@ -9,8 +9,10 @@ use smol_str::SmolStr;
 use std::cell::Cell;
 use std::error::Error;
 use std::fs::DirEntry;
+use std::io::{stdout, Write};
 use std::path::PathBuf;
 use std::rc::Rc;
+use tabwriter::TabWriter;
 
 mod utils;
 
@@ -32,6 +34,10 @@ struct Cli {
     /// Number of the last file of the simulation.
     #[arg(short = 'M', long)]
     max: Option<usize>,
+
+    /// Print more information while computing the ranking.
+    #[arg(short = 'v', long)]
+    verbose: bool,
 }
 
 struct SimulationData {
@@ -65,7 +71,9 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     for i in min..=max {
         let file = &files[&i];
-        println!("Running file number {:?}", file.file_name());
+        if args.verbose {
+            println!("Computing file number {:?}", file.file_name());
+        }
 
         let (bacchiatori, duels) = utils::load_data(file.path())?;
         utils::builder_from_data(&file.file_name(), &mut registered, &bacchiatori, &duels)?.evaluate()?;
@@ -82,6 +90,12 @@ fn main() -> Result<(), Box<dyn Error>> {
             opp.total_duels.set(opp.total_duels.get() + 1);
         }
     }
+
+    if args.verbose {
+        println!(); // Separate actual output from verbosely printed output
+    }
+
+    print_elos(registered)?;
 
     Ok(())
 }
@@ -182,4 +196,27 @@ fn get_or_register_bacchiatore(
         total_days: Cell::new(0),
     }))
     .clone()
+}
+
+fn print_elos(registered: RegisteredMap) -> Result<(), std::io::Error> {
+    let mut tw = TabWriter::new(stdout()).minwidth(5).padding(2);
+
+    let mut to_sort: Vec<_> = registered.values().collect();
+    to_sort.sort_unstable_by_key(|bacc| bacc.elo.get());
+
+    writeln!(&mut tw, "Bacchiatore\tElo\tDays played\tCompleted duels")?;
+    for bacc in to_sort.iter().rev() {
+        writeln!(
+            &mut tw,
+            "{}{}\t{}\t{}\t{}",
+            bacc.name,
+            if is_placing(bacc) { '*' } else { ' ' },
+            bacc.elo.get(),
+            bacc.total_days.get(),
+            bacc.total_duels.get()
+        )?;
+    }
+
+    tw.flush()?;
+    Ok(())
 }

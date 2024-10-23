@@ -67,9 +67,7 @@ pub fn load_data<P: AsRef<Path>>(
 
 #[derive(Debug)]
 pub struct RegisteredBacchiatore {
-    #[allow(dead_code)]
     pub name: SmolStr,
-    #[allow(dead_code)]
     pub elo: Cell<i32>,
     pub total_duels: Cell<u32>,
     pub total_days: Cell<u32>,
