@@ -1,6 +1,12 @@
 #![forbid(unsafe_code)]
 
+mod traits;
+
 use fxhash::FxHashMap;
+use std::marker::PhantomData;
+use thiserror::Error;
+
+pub use traits::*;
 
 pub const STARTING_ELO: i32 = 1200;
 
@@ -10,47 +16,45 @@ const K_OPPOSING_PLACING: f64 = 50.0;
 const S: f64 = 800.0;
 
 #[derive(Debug)]
-pub struct RankingBuilder<B: Bacchiatore, D: Duel> {
-    bacchiatori: Vec<B>,
-    bacchiatore_data: Vec<RegisteredBacchiatore>,
-    duels: Vec<D>,
-    duel_data: Vec<RegisteredDuel>,
+pub struct RankingBuilder<B: Bacchiatore, D: Duel, RB: AsRef<B>, RD: AsRef<D>> {
+    bacchiatori: Vec<(RB, RegisteredBacchiatore)>,
+    duels: Vec<(RD, RegisteredDuel)>,
+    _phantom: PhantomData<(B, D)>,
 }
 
-impl<B: Bacchiatore, D: Duel> RankingBuilder<B, D> {
+impl<B: Bacchiatore, D: Duel, RB: AsRef<B>, RD: AsRef<D>> RankingBuilder<B, D, RB, RD> {
     #[allow(clippy::new_without_default)]
-    pub fn new() -> RankingBuilder<B, D> {
+    pub fn new() -> Self {
         RankingBuilder {
             bacchiatori: Vec::with_capacity(8),
-            bacchiatore_data: Vec::new(), // Filled in evaluate(...) since it's just full of zeros
             duels: Vec::with_capacity(32),
-            duel_data: Vec::with_capacity(32),
+            _phantom: PhantomData,
         }
     }
 
-    pub fn add_bacchiatore(&mut self, bac: B) -> RankingBacchiatore {
-        self.bacchiatori.push(bac);
+    pub fn add_bacchiatore(&mut self, bac: RB) -> RankingBacchiatore {
+        self.bacchiatori.push((bac, RegisteredBacchiatore{ elo_delta: 0 }));
         RankingBacchiatore {
             index: self.bacchiatori.len() - 1,
         }
     }
 
-    pub fn add_duel(&mut self, equal: RankingBacchiatore, opposite: RankingBacchiatore, duel: D) {
-        self.duels.push(duel);
-        self.duel_data.push(RegisteredDuel {
+    pub fn add_duel(&mut self, equal: RankingBacchiatore, opposite: RankingBacchiatore, duel: RD) {
+        self.duels.push((duel, RegisteredDuel {
             equal: equal.index,
             opposite: opposite.index,
-        });
+        }));
     }
 
-    pub fn evaluate(mut self) -> (Vec<B>, Vec<D>) {
-        // See comment in new()
-        self.bacchiatore_data = vec![RegisteredBacchiatore{ elo_delta: 0 }; self.bacchiatori.len()];
-
-        let ranking = crate::evaluate(self);
-        (ranking.bacchiatori, ranking.duels)
+    pub fn evaluate(self) -> Result<(), RankingError> {
+        crate::evaluate(self);
+        Ok(())
     }
 }
+
+#[derive(Error, Debug)]
+#[non_exhaustive]
+pub enum RankingError {}
 
 #[derive(Copy, Clone, Debug)]
 pub struct RankingBacchiatore {
@@ -68,34 +72,11 @@ struct RegisteredDuel {
     opposite: usize, // Index of opposite in bacchiatori
 }
 
-pub trait Bacchiatore {
-    fn elo(&self) -> i32;
-
-    fn total_duels(&self) -> u32;
-
-    fn total_days(&self) -> u32;
-
-    fn elo_delta_callback(&mut self, elo_delta: i32);
-}
-
-pub trait Duel {
-    fn equal_points(&self) -> i32;
-
-    fn opposite_points(&self) -> i32;
-
-    fn equal_elo_delta_callback(&mut self, elo_delta: i32);
-
-    fn opposite_elo_delta_callback(&mut self, elo_delta: i32);
-}
-
 pub fn is_placing(bac: &impl Bacchiatore) -> bool {
     bac.total_duels() < 10 || bac.total_days() < 2
 }
 
-fn evaluate<B: Bacchiatore, D: Duel>(mut ranking: RankingBuilder<B, D>) -> RankingBuilder<B, D> {
-    assert_eq!(ranking.bacchiatori.len(), ranking.bacchiatore_data.len());
-    assert_eq!(ranking.duels.len(), ranking.duel_data.len());
-
+fn evaluate<B: Bacchiatore, D: Duel, RB: AsRef<B>, RD: AsRef<D>>(mut ranking: RankingBuilder<B, D, RB, RD>) -> RankingBuilder<B, D, RB, RD> {
     let mut map = FxHashMap::default();
 
     fn expected_result(b1_elo: i32, b2_elo: i32) -> f64 {
@@ -113,12 +94,12 @@ fn evaluate<B: Bacchiatore, D: Duel>(mut ranking: RankingBuilder<B, D>) -> Ranki
         }
     }
 
-    for (i, duel_data) in &mut ranking.duel_data.iter().enumerate() {
-        let duel = &mut ranking.duels[i];
+    for (duel, duel_data) in &mut ranking.duels.iter() {
+        let duel = duel.as_ref();
 
-        let b1 = &ranking.bacchiatori[duel_data.equal];
+        let b1 = ranking.bacchiatori[duel_data.equal].0.as_ref();
         let b1_elo = b1.elo();
-        let b2 = &ranking.bacchiatori[duel_data.opposite];
+        let b2 = ranking.bacchiatori[duel_data.opposite].0.as_ref();
         let b2_elo = b2.elo();
 
         let e_b1 = *map.entry((b1_elo, b2_elo)).or_insert_with(|| expected_result(b1_elo, b2_elo));
@@ -139,8 +120,12 @@ fn evaluate<B: Bacchiatore, D: Duel>(mut ranking: RankingBuilder<B, D>) -> Ranki
         duel.equal_elo_delta_callback(d1);
         duel.opposite_elo_delta_callback(d2);
 
-        ranking.bacchiatore_data[duel_data.equal].elo_delta += d1;
-        ranking.bacchiatore_data[duel_data.opposite].elo_delta += d2;
+        ranking.bacchiatori[duel_data.equal].1.elo_delta += d1;
+        ranking.bacchiatori[duel_data.opposite].1.elo_delta += d2;
+    }
+
+    for (bacchiatore, registered) in &ranking.bacchiatori {
+        bacchiatore.as_ref().elo_delta_callback(registered.elo_delta);
     }
 
     ranking
