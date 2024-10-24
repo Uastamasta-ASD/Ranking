@@ -65,6 +65,11 @@ pub fn load_data<P: AsRef<Path>>(
 pub struct RegisteredBacchiatore {
     pub name: SmolStr,
     pub elo: Cell<i32>,
+
+    // Updated before elo computation
+    pub is_placing: Cell<bool>,
+
+    // Updated after elo computation
     pub total_duels: Cell<u32>,
     pub total_days: Cell<u32>,
 }

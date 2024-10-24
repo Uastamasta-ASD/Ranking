@@ -77,7 +77,14 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
 
         let (bacchiatori, mut duels) = utils::load_data(file.path())?;
-        utils::builder_from_data(&file.file_name(), &mut registered, &bacchiatori, &mut duels)?.evaluate()?;
+        let builder = utils::builder_from_data(&file.file_name(), &mut registered, &bacchiatori, &mut duels)?;
+
+        for bacc in &bacchiatori {
+            let bacc = &registered[&bacc.name];
+            bacc.is_placing.set(is_placing(&**bacc));
+        }
+
+        builder.evaluate()?;
 
         for bacc in bacchiatori {
             let bacc = &registered[&bacc.name];
@@ -194,6 +201,7 @@ fn get_or_register_bacchiatore(
         .or_insert(Rc::new(RegisteredBacchiatore {
             name: bacchiatore,
             elo: Cell::new(STARTING_ELO),
+            is_placing: Cell::new(true),
             total_duels: Cell::new(0),
             total_days: Cell::new(0),
         }))
@@ -213,7 +221,7 @@ fn print_elos(registered: RegisteredMap) -> Result<(), std::io::Error> {
             &mut tw,
             "{}{}\t{}\t{}\t{}",
             bacc.name,
-            if is_placing(&***bacc) { '*' } else { ' ' },
+            if bacc.is_placing.get() { '*' } else { ' ' },
             bacc.elo.get(),
             bacc.total_days.get(),
             bacc.total_duels.get()
