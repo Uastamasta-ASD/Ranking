@@ -47,7 +47,7 @@ struct SimulationData {
 }
 
 type RegisteredMap = FxHashMap<SmolStr, Rc<RegisteredBacchiatore>>;
-type Builder = RankingBuilder<RegisteredBacchiatore, RegisteredDuel, Rc<RegisteredBacchiatore>, RegisteredDuel>;
+type Builder = RankingBuilder<Rc<RegisteredBacchiatore>, RegisteredDuel>;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let args = Cli::parse();

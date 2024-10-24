@@ -2,7 +2,6 @@
 
 mod traits;
 
-use std::marker::PhantomData;
 use thiserror::Error;
 
 pub use traits::*;
@@ -15,30 +14,28 @@ const K_OPPOSING_PLACING: f64 = 50.0;
 const S: f64 = 800.0;
 
 #[derive(Debug)]
-pub struct RankingBuilder<B: Bacchiatore, D: Duel, RB: AsRef<B>, RD: AsRef<D>> {
-    bacchiatori: Vec<(RB, RegisteredBacchiatore)>,
-    duels: Vec<(RD, RegisteredDuel)>,
-    _phantom: PhantomData<(B, D)>,
+pub struct RankingBuilder<B: Bacchiatore, D: Duel> {
+    bacchiatori: Vec<(B, RegisteredBacchiatore)>,
+    duels: Vec<(D, RegisteredDuel)>,
 }
 
-impl<B: Bacchiatore, D: Duel, RB: AsRef<B>, RD: AsRef<D>> RankingBuilder<B, D, RB, RD> {
+impl<B: Bacchiatore, D: Duel> RankingBuilder<B, D> {
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         RankingBuilder {
             bacchiatori: Vec::with_capacity(8),
             duels: Vec::with_capacity(32),
-            _phantom: PhantomData,
         }
     }
 
-    pub fn add_bacchiatore(&mut self, bac: RB) -> RankingBacchiatore {
+    pub fn add_bacchiatore(&mut self, bac: B) -> RankingBacchiatore {
         self.bacchiatori.push((bac, RegisteredBacchiatore{ elo_delta: 0 }));
         RankingBacchiatore {
             index: self.bacchiatori.len() - 1,
         }
     }
 
-    pub fn add_duel(&mut self, equal: RankingBacchiatore, opposite: RankingBacchiatore, duel: RD) {
+    pub fn add_duel(&mut self, equal: RankingBacchiatore, opposite: RankingBacchiatore, duel: D) {
         self.duels.push((duel, RegisteredDuel {
             equal: equal.index,
             opposite: opposite.index,
@@ -55,7 +52,7 @@ impl<B: Bacchiatore, D: Duel, RB: AsRef<B>, RD: AsRef<D>> RankingBuilder<B, D, R
 #[non_exhaustive]
 pub enum RankingError {}
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct RankingBacchiatore {
     index: usize,
 }
@@ -75,7 +72,7 @@ pub fn is_placing(bac: &impl Bacchiatore) -> bool {
     bac.total_duels() < 10 || bac.total_days() < 2
 }
 
-fn evaluate<B: Bacchiatore, D: Duel, RB: AsRef<B>, RD: AsRef<D>>(mut ranking: RankingBuilder<B, D, RB, RD>) -> RankingBuilder<B, D, RB, RD> {
+fn evaluate<B: Bacchiatore, D: Duel>(mut ranking: RankingBuilder<B, D>) -> RankingBuilder<B, D> {
     fn expected_result(b1_elo: i32, b2_elo: i32) -> f64 {
         let elo_diff = (b1_elo - b2_elo) as f64;
         let den = 1.0 + 10f64.powf(elo_diff / S);
@@ -92,11 +89,9 @@ fn evaluate<B: Bacchiatore, D: Duel, RB: AsRef<B>, RD: AsRef<D>>(mut ranking: Ra
     }
 
     for (duel, duel_data) in &mut ranking.duels.iter() {
-        let duel = duel.as_ref();
-
-        let b1 = ranking.bacchiatori[duel_data.equal].0.as_ref();
+        let b1 = &ranking.bacchiatori[duel_data.equal].0;
         let b1_elo = b1.elo();
-        let b2 = ranking.bacchiatori[duel_data.opposite].0.as_ref();
+        let b2 = &ranking.bacchiatori[duel_data.opposite].0;
         let b2_elo = b2.elo();
 
         let e_b1 = expected_result(b1_elo, b2_elo);
@@ -122,7 +117,7 @@ fn evaluate<B: Bacchiatore, D: Duel, RB: AsRef<B>, RD: AsRef<D>>(mut ranking: Ra
     }
 
     for (bacchiatore, registered) in &ranking.bacchiatori {
-        bacchiatore.as_ref().elo_delta_callback(registered.elo_delta);
+        bacchiatore.elo_delta_callback(registered.elo_delta);
     }
 
     ranking
