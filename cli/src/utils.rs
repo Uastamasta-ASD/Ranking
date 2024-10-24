@@ -1,25 +1,19 @@
 use crate::{get_or_register_bacchiatore, Builder, RegisteredMap};
 use bacrama_ranking::{Bacchiatore, Duel, RankingBuilder};
+use rustc_hash::{FxHashMap, FxHashSet};
 use serde::Deserialize;
 use smol_str::SmolStr;
 use std::cell::Cell;
 use std::error::Error;
 use std::ffi::OsStr;
 use std::fs::File;
+use std::ops::Deref;
 use std::path::Path;
-use rustc_hash::{FxHashMap, FxHashSet};
+use std::rc::Rc;
 
 #[derive(Clone, Debug)]
-pub struct DataBacchiatore {
+pub struct LoadedBacchiatore {
     pub name: SmolStr,
-}
-
-#[derive(Clone, Debug)]
-pub struct DataDuel {
-    pub equal: SmolStr,
-    pub opposite: SmolStr,
-    pub equal_points: i32,
-    pub opposite_points: i32,
 }
 
 #[derive(Debug, Deserialize)]
@@ -38,7 +32,7 @@ struct CsvRecord {
 
 pub fn load_data<P: AsRef<Path>>(
     path: P,
-) -> Result<(Vec<DataBacchiatore>, Vec<DataDuel>), Box<dyn Error>> {
+) -> Result<(Vec<LoadedBacchiatore>, Vec<RegisteredDuel>), Box<dyn Error>> {
     let mut rdr = csv::Reader::from_reader(File::open(path)?);
     let mut bacchiatori = FxHashSet::default();
     let mut duels = Vec::new();
@@ -49,17 +43,19 @@ pub fn load_data<P: AsRef<Path>>(
         bacchiatori.insert(record.equal.clone());
         bacchiatori.insert(record.opposite.clone());
 
-        duels.push(DataDuel {
+        duels.push(RegisteredDuel {
             equal: record.equal,
             opposite: record.opposite,
             equal_points: record.equal_points,
             opposite_points: record.opposite_points,
+            equal_elo_delta: None,
+            opposite_elo_delta: None,
         });
     }
 
     let bacchiatori = bacchiatori
         .into_iter()
-        .map(|name| DataBacchiatore { name })
+        .map(|name| LoadedBacchiatore { name })
         .collect();
 
     Ok((bacchiatori, duels))
@@ -71,12 +67,6 @@ pub struct RegisteredBacchiatore {
     pub elo: Cell<i32>,
     pub total_duels: Cell<u32>,
     pub total_days: Cell<u32>,
-}
-
-impl AsRef<RegisteredBacchiatore> for RegisteredBacchiatore {
-    fn as_ref(&self) -> &RegisteredBacchiatore {
-        self
-    }
 }
 
 impl Bacchiatore for RegisteredBacchiatore {
@@ -92,81 +82,96 @@ impl Bacchiatore for RegisteredBacchiatore {
         self.total_days.get()
     }
 
-    fn elo_delta_callback(&self, elo_delta: i32) {
+    fn elo_delta_callback(&mut self, elo_delta: i32) {
         self.elo.set(self.elo.get() + elo_delta);
     }
 }
 
 #[derive(Debug)]
-pub struct RegisteredDuel {
-    pub _equal: SmolStr,
-    pub _opposite: SmolStr,
-    pub equal_points: Cell<i32>,
-    pub opposite_points: Cell<i32>,
+pub struct RcRegisteredBacchiatore(pub Rc<RegisteredBacchiatore>);
+
+impl Deref for RcRegisteredBacchiatore {
+    type Target = RegisteredBacchiatore;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
 }
 
-impl AsRef<RegisteredDuel> for RegisteredDuel {
-    fn as_ref(&self) -> &RegisteredDuel {
-        self
+impl Bacchiatore for RcRegisteredBacchiatore {
+    fn elo(&self) -> i32 {
+        self.elo.get()
     }
+
+    fn total_duels(&self) -> u32 {
+        self.total_duels.get()
+    }
+
+    fn total_days(&self) -> u32 {
+        self.total_days.get()
+    }
+
+    fn elo_delta_callback(&mut self, elo_delta: i32) {
+        self.elo.set(self.elo.get() + elo_delta);
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct RegisteredDuel {
+    pub equal: SmolStr,
+    pub opposite: SmolStr,
+    pub equal_points: i32,
+    pub opposite_points: i32,
+    pub equal_elo_delta: Option<i32>,
+    pub opposite_elo_delta: Option<i32>,
 }
 
 impl Duel for RegisteredDuel {
     fn equal_points(&self) -> i32 {
-        self.equal_points.get()
+        self.equal_points
     }
 
     fn opposite_points(&self) -> i32 {
-        self.opposite_points.get()
+        self.opposite_points
     }
 
-    fn equal_elo_delta_callback(&self, elo_delta: i32) {
-        self.equal_points.set(elo_delta);
+    fn equal_elo_delta_callback(&mut self, elo_delta: i32) {
+        self.equal_elo_delta = Some(elo_delta);
     }
 
-    fn opposite_elo_delta_callback(&self, elo_delta: i32) {
-        self.opposite_points.set(elo_delta);
+    fn opposite_elo_delta_callback(&mut self, elo_delta: i32) {
+        self.opposite_elo_delta = Some(elo_delta);
     }
 }
 
-pub fn builder_from_data(
+pub fn builder_from_data<'a>(
     file: &OsStr,
     registered: &mut RegisteredMap,
-    bacchiatori: &[DataBacchiatore],
-    duels: &[DataDuel],
-) -> Result<Builder, Box<dyn Error>> {
+    bacchiatori: &[LoadedBacchiatore],
+    duels: &'a mut [RegisteredDuel],
+) -> Result<Builder<'a>, Box<dyn Error>> {
     let mut builder = RankingBuilder::new();
 
     let bacchiatori: FxHashMap<_, _> = bacchiatori
         .iter()
-        .map(|DataBacchiatore { name }| {
+        .map(|LoadedBacchiatore { name }| {
             let bac = get_or_register_bacchiatore(registered, name.clone());
             (name, builder.add_bacchiatore(bac))
         })
         .collect();
 
-    for DataDuel {
-        equal,
-        opposite,
-        equal_points,
-        opposite_points,
-    } in duels {
-        let Some(ranking_equal) = bacchiatori.get(equal) else {
-            return Err(format!("Bacchiatore {equal} not found in file {:?}. Data may be corrupted.", file).into());
+    for duel in duels {
+        let Some(ranking_equal) = bacchiatori.get(&duel.equal) else {
+            return Err(format!("Bacchiatore {} not found in file {:?}. Data may be corrupted.", duel.equal, file).into());
         };
-        let Some(ranking_opposite) = bacchiatori.get(opposite) else {
-            return Err(format!("Bacchiatore {opposite} not found in file {:?}. Data may be corrupted.", file).into());
+        let Some(ranking_opposite) = bacchiatori.get(&duel.opposite) else {
+            return Err(format!("Bacchiatore {} not found in file {:?}. Data may be corrupted.", duel.opposite, file).into());
         };
 
         builder.add_duel(
             *ranking_equal,
             *ranking_opposite,
-            RegisteredDuel {
-                _equal: equal.clone(),
-                _opposite: opposite.clone(),
-                equal_points: Cell::new(*equal_points),
-                opposite_points: Cell::new(*opposite_points),
-            },
+            duel,
         );
     }
 

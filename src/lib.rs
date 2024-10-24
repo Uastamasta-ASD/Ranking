@@ -88,7 +88,7 @@ fn evaluate<B: Bacchiatore, D: Duel>(mut ranking: RankingBuilder<B, D>) -> Ranki
         }
     }
 
-    for (duel, duel_data) in &mut ranking.duels.iter() {
+    for (duel, duel_data) in &mut ranking.duels {
         let b1 = &ranking.bacchiatori[duel_data.equal].0;
         let b1_elo = b1.elo();
         let b2 = &ranking.bacchiatori[duel_data.opposite].0;
@@ -116,7 +116,7 @@ fn evaluate<B: Bacchiatore, D: Duel>(mut ranking: RankingBuilder<B, D>) -> Ranki
         ranking.bacchiatori[duel_data.opposite].1.elo_delta += d2;
     }
 
-    for (bacchiatore, registered) in &ranking.bacchiatori {
+    for (bacchiatore, registered) in &mut ranking.bacchiatori {
         bacchiatore.elo_delta_callback(registered.elo_delta);
     }
 

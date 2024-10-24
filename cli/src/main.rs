@@ -1,10 +1,10 @@
 #![forbid(unsafe_code)]
 
-use crate::utils::{RegisteredBacchiatore, RegisteredDuel};
+use crate::utils::{RcRegisteredBacchiatore, RegisteredBacchiatore, RegisteredDuel};
 use bacrama_ranking::{is_placing, RankingBuilder, STARTING_ELO};
 use clap::Parser;
-use rustc_hash::FxHashMap;
 use regex::Regex;
+use rustc_hash::FxHashMap;
 use smol_str::SmolStr;
 use std::cell::Cell;
 use std::error::Error;
@@ -40,6 +40,7 @@ struct Cli {
     verbose: bool,
 }
 
+#[derive(Debug)]
 struct SimulationData {
     files: FxHashMap<usize, DirEntry>,
     min: usize,
@@ -47,7 +48,7 @@ struct SimulationData {
 }
 
 type RegisteredMap = FxHashMap<SmolStr, Rc<RegisteredBacchiatore>>;
-type Builder = RankingBuilder<Rc<RegisteredBacchiatore>, RegisteredDuel>;
+type Builder<'a> = RankingBuilder<RcRegisteredBacchiatore, &'a mut RegisteredDuel>;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let args = Cli::parse();
@@ -75,8 +76,8 @@ fn main() -> Result<(), Box<dyn Error>> {
             println!("Computing file number {:?}", file.file_name());
         }
 
-        let (bacchiatori, duels) = utils::load_data(file.path())?;
-        utils::builder_from_data(&file.file_name(), &mut registered, &bacchiatori, &duels)?.evaluate()?;
+        let (bacchiatori, mut duels) = utils::load_data(file.path())?;
+        utils::builder_from_data(&file.file_name(), &mut registered, &bacchiatori, &mut duels)?.evaluate()?;
 
         for bacc in bacchiatori {
             let bacc = &registered[&bacc.name];
@@ -186,16 +187,18 @@ fn file_regex(args: &Cli) -> Result<Regex, Box<dyn Error>> {
 fn get_or_register_bacchiatore(
     registered: &mut RegisteredMap,
     bacchiatore: SmolStr,
-) -> Rc<RegisteredBacchiatore> {
-    registered
-    .entry(bacchiatore.clone())
-    .or_insert(Rc::new(RegisteredBacchiatore {
-        name: bacchiatore.clone(),
-        elo: Cell::new(STARTING_ELO),
-        total_duels: Cell::new(0),
-        total_days: Cell::new(0),
-    }))
-    .clone()
+) -> RcRegisteredBacchiatore {
+    RcRegisteredBacchiatore(
+        registered
+        .entry(bacchiatore.clone())
+        .or_insert(Rc::new(RegisteredBacchiatore {
+            name: bacchiatore.clone(),
+            elo: Cell::new(STARTING_ELO),
+            total_duels: Cell::new(0),
+            total_days: Cell::new(0),
+        }))
+        .clone(),
+    )
 }
 
 fn print_elos(registered: RegisteredMap) -> Result<(), std::io::Error> {
@@ -210,7 +213,7 @@ fn print_elos(registered: RegisteredMap) -> Result<(), std::io::Error> {
             &mut tw,
             "{}{}\t{}\t{}\t{}",
             bacc.name,
-            if is_placing(bacc) { '*' } else { ' ' },
+            if is_placing(&***bacc) { '*' } else { ' ' },
             bacc.elo.get(),
             bacc.total_days.get(),
             bacc.total_duels.get()
