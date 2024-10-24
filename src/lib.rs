@@ -20,7 +20,6 @@ pub struct RankingBuilder<B: Bacchiatore, D: Duel> {
 }
 
 impl<B: Bacchiatore, D: Duel> RankingBuilder<B, D> {
-    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         RankingBuilder {
             bacchiatori: Vec::with_capacity(8),
@@ -45,6 +44,12 @@ impl<B: Bacchiatore, D: Duel> RankingBuilder<B, D> {
     pub fn evaluate(self) -> Result<(), RankingError> {
         crate::evaluate(self);
         Ok(())
+    }
+}
+
+impl<B: Bacchiatore, D: Duel> Default for RankingBuilder<B, D> {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
