@@ -2,7 +2,7 @@
 
 mod traits;
 
-use fxhash::FxHashMap;
+use rustc_hash::FxHashMap;
 use std::marker::PhantomData;
 use thiserror::Error;
 

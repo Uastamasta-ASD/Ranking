@@ -3,11 +3,11 @@ use bacrama_ranking::{Bacchiatore, Duel, RankingBuilder};
 use serde::Deserialize;
 use smol_str::SmolStr;
 use std::cell::Cell;
-use std::collections::{HashMap, HashSet};
 use std::error::Error;
 use std::ffi::OsStr;
 use std::fs::File;
 use std::path::Path;
+use rustc_hash::{FxHashMap, FxHashSet};
 
 #[derive(Clone, Debug)]
 pub struct DataBacchiatore {
@@ -40,7 +40,7 @@ pub fn load_data<P: AsRef<Path>>(
     path: P,
 ) -> Result<(Vec<DataBacchiatore>, Vec<DataDuel>), Box<dyn Error>> {
     let mut rdr = csv::Reader::from_reader(File::open(path)?);
-    let mut bacchiatori = HashSet::new();
+    let mut bacchiatori = FxHashSet::default();
     let mut duels = Vec::new();
 
     for result in rdr.deserialize() {
@@ -137,7 +137,7 @@ pub fn builder_from_data(
 ) -> Result<Builder, Box<dyn Error>> {
     let mut builder = RankingBuilder::new();
 
-    let bacchiatori: HashMap<_, _> = bacchiatori
+    let bacchiatori: FxHashMap<_, _> = bacchiatori
         .iter()
         .map(|DataBacchiatore { name }| {
             let bac = get_or_register_bacchiatore(registered, name.clone());

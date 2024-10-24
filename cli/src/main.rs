@@ -3,7 +3,7 @@
 use crate::utils::{RegisteredBacchiatore, RegisteredDuel};
 use bacrama_ranking::{is_placing, RankingBuilder, STARTING_ELO};
 use clap::Parser;
-use fxhash::FxHashMap;
+use rustc_hash::FxHashMap;
 use regex::Regex;
 use smol_str::SmolStr;
 use std::cell::Cell;
