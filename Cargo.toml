@@ -19,3 +19,7 @@ edition = "2021"
 [dependencies]
 fxhash = "0.2.1"
 thiserror = "1.0.65"
+
+[profile.bench]
+debug = true # Required by iai-callgrind (see cli)
+strip = false # Required by iai-callgrind (see cli)
