@@ -192,7 +192,7 @@ fn get_or_register_bacchiatore(
         registered
         .entry(bacchiatore.clone())
         .or_insert(Rc::new(RegisteredBacchiatore {
-            name: bacchiatore.clone(),
+            name: bacchiatore,
             elo: Cell::new(STARTING_ELO),
             total_duels: Cell::new(0),
             total_days: Cell::new(0),
