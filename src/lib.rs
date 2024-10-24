@@ -2,7 +2,6 @@
 
 mod traits;
 
-use rustc_hash::FxHashMap;
 use std::marker::PhantomData;
 use thiserror::Error;
 
@@ -77,8 +76,6 @@ pub fn is_placing(bac: &impl Bacchiatore) -> bool {
 }
 
 fn evaluate<B: Bacchiatore, D: Duel, RB: AsRef<B>, RD: AsRef<D>>(mut ranking: RankingBuilder<B, D, RB, RD>) -> RankingBuilder<B, D, RB, RD> {
-    let mut map = FxHashMap::default();
-
     fn expected_result(b1_elo: i32, b2_elo: i32) -> f64 {
         let elo_diff = (b1_elo - b2_elo) as f64;
         let den = 1.0 + 10f64.powf(elo_diff / S);
@@ -102,8 +99,8 @@ fn evaluate<B: Bacchiatore, D: Duel, RB: AsRef<B>, RD: AsRef<D>>(mut ranking: Ra
         let b2 = ranking.bacchiatori[duel_data.opposite].0.as_ref();
         let b2_elo = b2.elo();
 
-        let e_b1 = *map.entry((b1_elo, b2_elo)).or_insert_with(|| expected_result(b1_elo, b2_elo));
-        let e_b2 = *map.entry((b2_elo, b1_elo)).or_insert_with(|| expected_result(b2_elo, b1_elo));
+        let e_b1 = expected_result(b1_elo, b2_elo);
+        let e_b2 = expected_result(b2_elo, b1_elo);
 
         let p1 = duel.equal_points() as f64;
         let p2 = duel.opposite_points() as f64;
