@@ -4,7 +4,7 @@ mod traits;
 
 use thiserror::Error;
 
-pub use traits::*;
+pub use traits::{Bacchiatore, Duel};
 
 pub const STARTING_ELO: i32 = 1200;
 
