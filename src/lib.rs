@@ -28,7 +28,7 @@ impl<B: Bacchiatore, D: Duel> RankingBuilder<B, D> {
     }
 
     pub fn add_bacchiatore(&mut self, bac: B) -> RankingBacchiatore {
-        self.bacchiatori.push((bac, BacchiatoreData { elo_delta: 0 }));
+        self.bacchiatori.push((bac, BacchiatoreData { elo_gain: 0 }));
         RankingBacchiatore {
             index: self.bacchiatori.len() - 1,
         }
@@ -64,7 +64,7 @@ pub struct RankingBacchiatore {
 
 #[derive(Copy, Clone, Debug)]
 struct BacchiatoreData {
-    elo_delta: i32,
+    elo_gain: i32,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -117,15 +117,15 @@ fn evaluate<B: Bacchiatore, D: Duel>(mut ranking: RankingBuilder<B, D>) -> Ranki
         //let d2 = (k2 * (o_b2 - e_b2)) as i32;
         let d2 = (k2 * -(o_b1 - e_b1)) as i32; // It's possible to prove that o_b1 - e_b1 = -(o_b1 - e_b1)
 
-        duel.equal_elo_delta_callback(d1);
-        duel.opposite_elo_delta_callback(d2);
+        duel.equal_elo_gain_callback(d1);
+        duel.opposite_elo_gain_callback(d2);
 
-        ranking.bacchiatori[duel_data.equal].1.elo_delta += d1;
-        ranking.bacchiatori[duel_data.opposite].1.elo_delta += d2;
+        ranking.bacchiatori[duel_data.equal].1.elo_gain += d1;
+        ranking.bacchiatori[duel_data.opposite].1.elo_gain += d2;
     }
 
     for (bacchiatore, registered) in &mut ranking.bacchiatori {
-        bacchiatore.elo_delta_callback(registered.elo_delta);
+        bacchiatore.elo_gain_callback(registered.elo_gain);
     }
 
     ranking

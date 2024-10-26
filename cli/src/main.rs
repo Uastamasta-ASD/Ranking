@@ -245,7 +245,7 @@ fn print_elos(registered: RegisteredMap) -> Result<(), std::io::Error> {
 fn print_duels(duels: &[RegisteredDuel], registered: &RegisteredMap) -> Result<(), std::io::Error> {
     let mut tw = TabWriter::new(stdout()).minwidth(5).padding(2);
 
-    writeln!(&mut tw, "Equal\tOpposite\tEqual points\tOpposite points\tEqual elo delta\tOpposite elo delta")?;
+    writeln!(&mut tw, "Equal\tOpposite\tEqual points\tOpposite points\tEqual elo gain\tOpposite elo gain")?;
     for duel in duels.iter() {
         writeln!(
             &mut tw,
@@ -256,8 +256,8 @@ fn print_duels(duels: &[RegisteredDuel], registered: &RegisteredMap) -> Result<(
             is_placing_char(&registered[&duel.opposite]),
             duel.equal_points,
             duel.opposite_points,
-            duel.equal_elo_delta.expect("Elo delta missing for equal"),
-            duel.opposite_elo_delta.expect("Elo delta missing for opposite"),
+            duel.equal_elo_gain.expect("Elo gain missing for equal"),
+            duel.opposite_elo_gain.expect("Elo gain missing for opposite"),
         )?;
     }
 

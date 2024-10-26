@@ -48,8 +48,8 @@ pub fn load_data<P: AsRef<Path>>(
             opposite: record.opposite,
             equal_points: record.equal_points,
             opposite_points: record.opposite_points,
-            equal_elo_delta: None,
-            opposite_elo_delta: None,
+            equal_elo_gain: None,
+            opposite_elo_gain: None,
         });
     }
 
@@ -88,8 +88,8 @@ impl Bacchiatore for RegisteredBacchiatore {
         self.total_days.get()
     }
 
-    fn elo_delta_callback(&mut self, elo_delta: i32) {
-        self.elo.set(self.elo.get() + elo_delta);
+    fn elo_gain_callback(&mut self, elo_gain: i32) {
+        self.elo.set(self.elo.get() + elo_gain);
     }
 }
 
@@ -117,8 +117,8 @@ impl Bacchiatore for RcRegisteredBacchiatore {
         self.total_days.get()
     }
 
-    fn elo_delta_callback(&mut self, elo_delta: i32) {
-        self.elo.set(self.elo.get() + elo_delta);
+    fn elo_gain_callback(&mut self, elo_gain: i32) {
+        self.elo.set(self.elo.get() + elo_gain);
     }
 }
 
@@ -128,8 +128,8 @@ pub struct RegisteredDuel {
     pub opposite: SmolStr,
     pub equal_points: i32,
     pub opposite_points: i32,
-    pub equal_elo_delta: Option<i32>,
-    pub opposite_elo_delta: Option<i32>,
+    pub equal_elo_gain: Option<i32>,
+    pub opposite_elo_gain: Option<i32>,
 }
 
 impl Duel for RegisteredDuel {
@@ -141,12 +141,12 @@ impl Duel for RegisteredDuel {
         self.opposite_points
     }
 
-    fn equal_elo_delta_callback(&mut self, elo_delta: i32) {
-        self.equal_elo_delta = Some(elo_delta);
+    fn equal_elo_gain_callback(&mut self, elo_gain: i32) {
+        self.equal_elo_gain = Some(elo_gain);
     }
 
-    fn opposite_elo_delta_callback(&mut self, elo_delta: i32) {
-        self.opposite_elo_delta = Some(elo_delta);
+    fn opposite_elo_gain_callback(&mut self, elo_gain: i32) {
+        self.opposite_elo_gain = Some(elo_gain);
     }
 }
 

@@ -10,7 +10,7 @@ pub trait Bacchiatore {
     fn total_days(&self) -> u32;
 
     /// Called at the end of the elo calculation with the elo increase/decrease for this bacchiatore.
-    fn elo_delta_callback(&mut self, elo_delta: i32);
+    fn elo_gain_callback(&mut self, elo_gain: i32);
 }
 
 macro_rules! impl_bacchiatore {
@@ -34,8 +34,8 @@ macro_rules! impl_bacchiatore {
             (**self).total_days()
         }
 
-        fn elo_delta_callback(&mut self, elo_delta: i32) {
-            (**self).elo_delta_callback(elo_delta);
+        fn elo_gain_callback(&mut self, elo_gain: i32) {
+            (**self).elo_gain_callback(elo_gain);
         }
     };
 }
@@ -55,10 +55,10 @@ pub trait Duel {
     fn opposite_points(&self) -> i32;
 
     /// Called at the end of the elo calculation with the elo increase/decrease for equal.
-    fn equal_elo_delta_callback(&mut self, elo_delta: i32);
+    fn equal_elo_gain_callback(&mut self, elo_gain: i32);
 
     /// Called at the end of the elo calculation with the elo increase/decrease for opposite.
-    fn opposite_elo_delta_callback(&mut self, elo_delta: i32);
+    fn opposite_elo_gain_callback(&mut self, elo_gain: i32);
 }
 
 macro_rules! impl_duel {
@@ -78,12 +78,12 @@ macro_rules! impl_duel {
             (**self).opposite_points()
         }
 
-        fn equal_elo_delta_callback(&mut self, elo_delta: i32) {
-            (**self).equal_elo_delta_callback(elo_delta);
+        fn equal_elo_gain_callback(&mut self, elo_gain: i32) {
+            (**self).equal_elo_gain_callback(elo_gain);
         }
 
-        fn opposite_elo_delta_callback(&mut self, elo_delta: i32) {
-            (**self).opposite_elo_delta_callback(elo_delta);
+        fn opposite_elo_gain_callback(&mut self, elo_gain: i32) {
+            (**self).opposite_elo_gain_callback(elo_gain);
         }
     };
 }
