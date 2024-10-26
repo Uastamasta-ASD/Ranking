@@ -79,8 +79,8 @@ pub fn is_placing(bac: &impl Bacchiatore) -> bool {
 
 fn evaluate<B: Bacchiatore, D: Duel>(mut ranking: RankingBuilder<B, D>) -> RankingBuilder<B, D> {
     #[inline(always)]
-    fn expected_result(b1_elo: i32, b2_elo: i32) -> f64 {
-        let elo_diff = (b2_elo - b1_elo) as f64;
+    fn expected_result(bacc_elo: i32, other_bacc_elo: i32) -> f64 {
+        let elo_diff = (other_bacc_elo - bacc_elo) as f64;
         let den = 1.0 + 10f64.powf(elo_diff / S);
         1.0 / den
     }
