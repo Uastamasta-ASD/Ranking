@@ -102,19 +102,20 @@ fn evaluate<B: Bacchiatore, D: Duel>(mut ranking: RankingBuilder<B, D>) -> Ranki
         let b2_elo = b2.elo();
 
         let e_b1 = expected_result(b1_elo, b2_elo);
-        let e_b2 = expected_result(b2_elo, b1_elo);
+        //let e_b2 = expected_result(b2_elo, b1_elo);
 
         let p1 = duel.equal_points() as f64;
         let p2 = duel.opposite_points() as f64;
         let sum = p1 + p2;
 
         let o_b1 = p1 / sum;
-        let o_b2 = p2 / sum;
+        //let o_b2 = p2 / sum;
 
         let (k1, k2) = k(b1, b2);
 
         let d1 = (k1 * (o_b1 - e_b1)) as i32;
-        let d2 = (k2 * (o_b2 - e_b2)) as i32;
+        //let d2 = (k2 * (o_b2 - e_b2)) as i32;
+        let d2 = (k2 * -(o_b1 - e_b1)) as i32; // It's possible to prove that o_b1 - e_b1 = -(o_b1 - e_b1)
 
         duel.equal_elo_delta_callback(d1);
         duel.opposite_elo_delta_callback(d2);
