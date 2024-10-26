@@ -65,6 +65,7 @@ pub fn load_data<P: AsRef<Path>>(
 pub struct RegisteredBacchiatore {
     pub name: SmolStr,
     pub elo: Cell<i32>,
+    pub victories: Cell<usize>,
 
     // Updated before elo computation
     pub is_placing: Cell<bool>,

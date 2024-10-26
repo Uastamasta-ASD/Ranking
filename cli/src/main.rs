@@ -7,6 +7,7 @@ use regex::Regex;
 use rustc_hash::FxHashMap;
 use smol_str::SmolStr;
 use std::cell::Cell;
+use std::cmp::Ordering;
 use std::error::Error;
 use std::fs::DirEntry;
 use std::io::{stdout, Write};
@@ -96,6 +97,12 @@ fn main() -> Result<(), Box<dyn Error>> {
 
             let opp = &registered[&duel.opposite];
             opp.total_duels.set(opp.total_duels.get() + 1);
+
+            match duel.equal_points.cmp(&duel.opposite_points) {
+                Ordering::Greater => eq.victories.set(eq.victories.get() + 1),
+                Ordering::Less => opp.victories.set(opp.victories.get() + 1),
+                Ordering::Equal => {},
+            }
         }
     }
 
@@ -202,6 +209,7 @@ fn get_or_register_bacchiatore(
             name: bacchiatore,
             elo: Cell::new(STARTING_ELO),
             is_placing: Cell::new(true),
+            victories: Cell::new(0),
             total_duels: Cell::new(0),
             total_days: Cell::new(0),
         }))
@@ -215,16 +223,17 @@ fn print_elos(registered: RegisteredMap) -> Result<(), std::io::Error> {
     let mut to_sort: Vec<_> = registered.values().collect();
     to_sort.sort_unstable_by_key(|bacc| bacc.elo.get());
 
-    writeln!(&mut tw, "Bacchiatore\tElo\tDays played\tCompleted duels")?;
+    writeln!(&mut tw, "Bacchiatore\tElo\tDays played\tCompleted duels\tVictories")?;
     for bacc in to_sort.iter().rev() {
         writeln!(
             &mut tw,
-            "{}{}\t{}\t{}\t{}",
+            "{}{}\t{}\t{}\t{}\t{}",
             bacc.name,
             if bacc.is_placing.get() { '*' } else { ' ' },
             bacc.elo.get(),
             bacc.total_days.get(),
-            bacc.total_duels.get()
+            bacc.total_duels.get(),
+            bacc.victories.get(),
         )?;
     }
 
