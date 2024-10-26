@@ -74,7 +74,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     for i in min..=max {
         let file = &files[&i];
         if args.verbose {
-            println!("Computing file number {:?}", file.file_name());
+            println!("Duels from {:?}:", file.file_name());
         }
 
         let (bacchiatori, mut duels) = utils::load_data(file.path())?;
@@ -86,6 +86,11 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
 
         builder.evaluate()?;
+
+        if args.verbose {
+            print_duels(&duels, &registered)?;
+            println!();
+        }
 
         for bacc in bacchiatori {
             let bacc = &registered[&bacc.name];
@@ -104,10 +109,6 @@ fn main() -> Result<(), Box<dyn Error>> {
                 Ordering::Equal => {},
             }
         }
-    }
-
-    if args.verbose {
-        println!(); // Separate actual output from verbosely printed output
     }
 
     print_elos(registered)?;
@@ -229,7 +230,7 @@ fn print_elos(registered: RegisteredMap) -> Result<(), std::io::Error> {
             &mut tw,
             "{}{}\t{}\t{}\t{}\t{}",
             bacc.name,
-            if bacc.is_placing.get() { '*' } else { ' ' },
+            is_placing_char(bacc),
             bacc.elo.get(),
             bacc.total_days.get(),
             bacc.total_duels.get(),
@@ -239,4 +240,35 @@ fn print_elos(registered: RegisteredMap) -> Result<(), std::io::Error> {
 
     tw.flush()?;
     Ok(())
+}
+
+fn print_duels(duels: &[RegisteredDuel], registered: &RegisteredMap) -> Result<(), std::io::Error> {
+    let mut tw = TabWriter::new(stdout()).minwidth(5).padding(2);
+
+    writeln!(&mut tw, "Equal\tOpposite\tEqual points\tOpposite points\tEqual elo delta\tOpposite elo delta")?;
+    for duel in duels.iter() {
+        writeln!(
+            &mut tw,
+            "{}{}\t{}{}\t{}\t{}\t{}\t{}",
+            duel.equal,
+            is_placing_char(&registered[&duel.equal]),
+            duel.opposite,
+            is_placing_char(&registered[&duel.opposite]),
+            duel.equal_points,
+            duel.opposite_points,
+            duel.equal_elo_delta.expect("Elo delta missing for equal"),
+            duel.opposite_elo_delta.expect("Elo delta missing for opposite"),
+        )?;
+    }
+
+    tw.flush()?;
+    Ok(())
+}
+
+fn is_placing_char(bacc: &RegisteredBacchiatore) -> char {
+    if bacc.is_placing.get() {
+        '*'
+    } else {
+        ' '
+    }
 }
