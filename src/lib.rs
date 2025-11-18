@@ -8,10 +8,10 @@ pub use traits::{Bacchiatore, Duel};
 
 pub const STARTING_ELO: i32 = 1200;
 
-const K: f64 = 100.0;
-const K_PLACING: f64 = 200.0;
-const K_OPPOSING_PLACING: f64 = 50.0;
-const S: f64 = 800.0;
+const K: f64 = 80.0;
+const K_PLACING: f64 = 160.0;
+const K_OPPOSING_PLACING: f64 = 40.0;
+const S: f64 = 1000.0;
 
 #[derive(Debug)]
 pub struct RankingBuilder<B: Bacchiatore, D: Duel> {
